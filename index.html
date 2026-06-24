@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Buku Tani</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#4A6B3D" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Buku Tani" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: #EFEAE0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+    }
+    #app { width: 100%; max-width: 480px; position: relative; }
+
+    /* ---- header ---- */
+    .header { background: #4A6B3D; padding: 36px 20px 20px; border-radius: 0 0 28px 28px; }
+    .header-top { display: flex; justify-content: space-between; align-items: flex-start; }
+    .eyebrow { color: #D9E6C8; font-size: 11px; letter-spacing: .12em; font-weight: 700; margin-bottom: 4px; }
+    .title { color: #F7F4EC; font-size: 22px; font-weight: 800; font-family: Georgia, serif; }
+    .header-icon { width: 40px; height: 40px; border-radius: 50%; background: rgba(247,244,236,.15); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .tab-bar { display: flex; gap: 6px; margin-top: 18px; background: rgba(247,244,236,.14); border-radius: 12px; padding: 4px; }
+    .tab-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 9px 0; border-radius: 9px; border: none; background: transparent; color: #E3EBD7; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .tab-btn.active { background: #F7F4EC; color: #2B2620; }
+
+    /* ---- summary card ---- */
+    .summary-card { background: #FFFDF8; margin: -14px 16px 0; border-radius: 18px; padding: 18px; box-shadow: 0 8px 24px rgba(74,107,61,.15); border: 1px solid #E4DCC8; }
+    .summary-row { display: flex; justify-content: space-between; align-items: flex-start; }
+    .summary-label { font-size: 12.5px; color: #8A7F6A; font-weight: 600; }
+    .summary-main { margin-top: 4px; font-size: 26px; font-weight: 800; color: #2B2620; font-family: Georgia, serif; }
+    .summary-main.merah { color: #B3473B; }
+    .divider { height: 1px; background: #EDE6D4; margin: 14px 0 12px; }
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mini-label { font-size: 11px; color: #8A7F6A; font-weight: 600; }
+    .mini-value { margin-top: 3px; font-size: 14.5px; font-weight: 700; color: #2B2620; }
+    .mini-value.hijau { color: #4A6B3D; }
+    .mini-value.merah { color: #B3473B; }
+
+    /* ---- grafik ---- */
+    .grafik-card { background: #FFFDF8; margin: 12px 16px 0; border-radius: 16px; padding: 14px 16px 10px; border: 1px solid #E9E2D0; }
+    .grafik-header { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; font-size: 12px; color: #8A7F6A; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .grafik-bars { display: flex; justify-content: space-between; align-items: flex-end; height: 104px; }
+    .grafik-bar-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
+    .grafik-bar-track { height: 80px; display: flex; align-items: flex-end; }
+    .grafik-bar { width: 18px; border-radius: 5px; background: #A8C4A2; transition: height .2s ease; }
+    .grafik-bar.today { background: #C9A24A; }
+    .grafik-label { font-size: 10px; color: #8A7F6A; }
+    .grafik-label.today { font-weight: 800; }
+
+    /* ---- per komoditas chips ---- */
+    .chips-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+    .komoditas-chip { display: flex; flex-direction: column; background: #F4F1EA; border-radius: 10px; padding: 6px 10px; min-width: 92px; border-left: 3px solid #ccc; }
+    .chip-nama { font-size: 11px; font-weight: 700; color: #5C5346; }
+    .chip-berat { font-size: 10.5px; color: #8A7F6A; font-weight: 600; }
+    .chip-rp { font-size: 12.5px; font-weight: 800; color: #4A6B3D; }
+
+    /* ---- filter & segment ---- */
+    .filter-row { padding: 16px 16px 0; }
+    select { width: 100%; padding: 11px 14px; border-radius: 12px; border: 1px solid #DCD3BD; background: #FFFDF8; color: #2B2620; font-size: 14px; font-weight: 600; appearance: auto; }
+    .segment-wrap { display: flex; gap: 6px; background: #E4DCC8; border-radius: 12px; padding: 4px; flex-wrap: wrap; }
+    .segment-btn { flex: 1; border: none; background: transparent; padding: 9px 4px; border-radius: 9px; font-size: 12px; font-weight: 700; color: #5C5346; cursor: pointer; min-width: 70px; }
+    .segment-btn.active { background: #FFFDF8; color: #2B2620; }
+
+    /* ---- list ---- */
+    .list-section { padding: 18px 16px 0; }
+    .list-header { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; font-size: 12px; color: #8A7F6A; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .empty-box { background: #FFFDF8; border: 1px dashed #DCD3BD; border-radius: 14px; padding: 32px 20px; text-align: center; }
+    .empty-title { font-size: 14.5px; font-weight: 700; color: #5C5346; }
+    .empty-sub { margin-top: 4px; font-size: 12.5px; color: #8A7F6A; }
+    ul.item-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .item { background: #FFFDF8; border: 1px solid #E9E2D0; border-radius: 14px; padding: 12px; display: flex; align-items: center; gap: 8px; }
+    .item.lunas { opacity: .6; }
+    .kat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .item-main { flex: 1; min-width: 0; }
+    .item-nama { font-size: 14.5px; font-weight: 700; color: #2B2620; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .item-detail { margin-top: 2px; font-size: 12px; color: #8A7F6A; }
+    .item-right { text-align: right; }
+    .item-subtotal { font-size: 14px; font-weight: 700; color: #2B2620; }
+    .item-subtotal.merah { color: #B3473B; }
+    .lunas-tag { font-size: 11px; font-weight: 700; color: #3F6B4F; }
+    .btn-icon { border: none; background: transparent; padding: 6px; cursor: pointer; display: flex; flex-shrink: 0; }
+    .btn-lunas { border: none; background: transparent; padding: 2px; cursor: pointer; display: flex; flex-shrink: 0; font-size: 22px; }
+
+    /* ---- kasbon per orang ---- */
+    .kasbon-chip { display: flex; flex-direction: column; background: #F4F1EA; border-radius: 10px; padding: 6px 10px; min-width: 80px; }
+    .kasbon-chip-nama { font-size: 11px; font-weight: 700; color: #5C5346; }
+    .kasbon-chip-rp { font-size: 12.5px; font-weight: 800; color: #B3473B; }
+
+    /* ---- export ---- */
+    .export-btn { width: 100%; display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-radius: 14px; border: none; background: #4A6B3D; color: #F7F4EC; font-size: 14.5px; font-weight: 700; cursor: pointer; }
+    .export-hint { font-size: 11.5px; color: #8A7F6A; margin: 8px 4px 0; }
+
+    /* ---- FAB ---- */
+    .fab { position: fixed; bottom: 24px; right: 50%; transform: translateX(212px); width: 56px; height: 56px; border-radius: 50%; background: #C9A24A; border: none; box-shadow: 0 8px 20px rgba(201,162,74,.45); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 28px; color: #fff; z-index: 40; }
+
+    /* ---- sheet / overlay ---- */
+    .overlay { position: fixed; inset: 0; background: rgba(43,38,32,.45); display: flex; align-items: flex-end; justify-content: center; z-index: 50; }
+    .sheet { width: 100%; max-width: 480px; background: #F4F1EA; border-radius: 22px 22px 0 0; padding: 18px 20px 32px; display: flex; flex-direction: column; gap: 6px; max-height: 88vh; overflow-y: auto; }
+    .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .sheet-title { font-size: 17px; font-weight: 800; color: #2B2620; font-family: Georgia, serif; }
+    .btn-close { border: none; background: #E9E2D0; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; }
+
+    /* ---- form ---- */
+    .mic-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; border-radius: 12px; border: 1.5px dashed #C9A24A; background: #FBF2DE; color: #9C7A2E; font-size: 13.5px; font-weight: 700; cursor: pointer; margin-top: 6px; margin-bottom: 4px; }
+    .mic-btn.aktif { background: #C9A24A; color: #FFFDF8; border-color: #C9A24A; }
+    label.form-label { font-size: 12px; font-weight: 700; color: #5C5346; margin-top: 10px; margin-bottom: 4px; display: block; }
+    input.form-input, select.form-input { width: 100%; padding: 11px 13px; border-radius: 11px; border: 1px solid #DCD3BD; background: #FFFDF8; font-size: 14.5px; color: #2B2620; }
+    .row-two { display: flex; gap: 10px; }
+    .row-two > div { flex: 1; }
+    .helper-text { font-size: 11.5px; color: #8A7F6A; margin-top: 4px; }
+    .kat-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 2px; }
+    .kat-chip { display: flex; align-items: center; gap: 4px; padding: 6px 10px; border-radius: 9px; border: 1.5px solid #DCD3BD; font-size: 11.5px; font-weight: 700; cursor: pointer; background: #FFFDF8; color: #5C5346; }
+    .kat-chip.active { color: #FFFDF8; }
+    .submit-btn { margin-top: 16px; padding: 13px; border-radius: 13px; border: none; background: #4A6B3D; color: #F7F4EC; font-size: 15px; font-weight: 700; cursor: pointer; }
+    .submit-btn:disabled { opacity: .5; }
+    .contoh-text { font-size: 11.5px; color: #8A7F6A; margin-bottom: 8px; }
+    .voice-notice { font-size: 12px; color: #3F6B4F; font-weight: 600; margin: 2px 0 4px; }
+    .interim-text { font-size: 12.5px; color: #8A7F6A; font-style: italic; margin: 2px 0 4px; }
+
+    /* ---- install banner ---- */
+    .install-banner { margin: 12px 16px 0; background: #4A6B3D; border-radius: 14px; padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
+    .install-banner p { color: #D9E6C8; font-size: 13px; font-weight: 600; flex: 1; }
+    .install-banner button { border: none; background: #C9A24A; color: #fff; font-size: 12.5px; font-weight: 700; padding: 7px 14px; border-radius: 9px; cursor: pointer; white-space: nowrap; }
+    .install-banner .btn-dismiss { background: transparent; color: #D9E6C8; font-size: 18px; padding: 0 4px; }
+
+    .spacer { height: 90px; }
+
+    @media (max-width: 480px) {
+      .fab { right: 20px; transform: none; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header class="header">
+    <div class="header-top">
+      <div>
+        <p class="eyebrow">BUKU TANI</p>
+        <h1 class="title" id="header-title">Catatan Panen</h1>
+      </div>
+      <div class="header-icon">🌾</div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="panen" onclick="switchTab('panen')">🌿 Panen</button>
+      <button class="tab-btn" data-tab="kasbon" onclick="switchTab('kasbon')">👥 Kasbon</button>
+      <button class="tab-btn" data-tab="lainnya" onclick="switchTab('lainnya')">💰 Lainnya</button>
+    </div>
+  </header>
+
+  <div id="install-banner" class="install-banner" style="display:none">
+    <p>Install Buku Tani di HP kamu supaya bisa dibuka offline</p>
+    <button onclick="installPWA()">Install</button>
+    <button class="btn-dismiss" onclick="document.getElementById('install-banner').style.display='none'">✕</button>
+  </div>
+
+  <div id="tab-panen"></div>
+  <div id="tab-kasbon" style="display:none"></div>
+  <div id="tab-lainnya" style="display:none"></div>
+
+  <div class="spacer"></div>
+
+  <button class="fab" id="fab" onclick="bukaForm()">＋</button>
+
+  <div class="overlay" id="overlay" style="display:none" onclick="tutupForm()">
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="sheet-header">
+        <p class="sheet-title" id="sheet-title">Catat hasil panen</p>
+        <button class="btn-close" onclick="tutupForm()">✕</button>
+      </div>
+      <div id="form-container"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================== DATA & STORAGE ===================== */
+
+const DB = {
+  get: (key) => { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } },
+  set: (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} },
+};
+
+let panen = DB.get("bt:panen");
+let kasbon = DB.get("bt:kasbon");
+let pengeluaran = DB.get("bt:pengeluaran");
+
+if (!panen.length) {
+  const today = todayStr();
+  panen = [
+    { id: uid(), tanggal: today, waktu: new Date().toISOString(), komoditasKey: "kopi", nama: "Kopi", jumlah: 50, satuan: "kg", harga: 35000 },
+    { id: uid(), tanggal: today, waktu: new Date().toISOString(), komoditasKey: "cabai", nama: "Cabai", jumlah: 20, satuan: "kg", harga: 28000 },
+  ];
+  kasbon = [{ id: uid(), nama: "Pak Slamet", jumlah: 50000, ket: "Upah bantu panen", tanggal: today, lunas: false }];
+  pengeluaran = [{ id: uid(), ket: "Pupuk NPK", jumlah: 150000, kategori: "pupuk", tanggal: today }];
+  save();
+}
+
+function save() {
+  DB.set("bt:panen", panen);
+  DB.set("bt:kasbon", kasbon);
+  DB.set("bt:pengeluaran", pengeluaran);
+}
+
+function uid() { return Date.now() + "_" + Math.random().toString(36).slice(2, 7); }
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+function rupiah(n) { return "Rp" + Math.round(n || 0).toLocaleString("id-ID"); }
+function fmtTgl(str) {
+  const d = new Date(str + "T00:00:00");
+  return d.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" });
+}
+function fmtTglPendek(str) {
+  const d = new Date(str + "T00:00:00");
+  return d.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+}
+function fmtJam(iso) {
+  return new Date(iso).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+}
+
+/* ===================== KOMODITAS & KATEGORI ===================== */
+
+const KOMODITAS = [
+  { key: "kopi", label: "Kopi", color: "#6B4226" },
+  { key: "kentang", label: "Kentang", color: "#C9A24A" },
+  { key: "cabai", label: "Cabai", color: "#B3473B" },
+  { key: "jagung", label: "Jagung", color: "#D4A017" },
+  { key: "padi", label: "Padi", color: "#8A9A5B" },
+  { key: "lainnya", label: "Lainnya", color: "#8A7F6A" },
+];
+const KOM_MAP = Object.fromEntries(KOMODITAS.map((k) => [k.key, k]));
+const komInfo = (key) => KOM_MAP[key] || KOM_MAP.lainnya;
+
+const SATUAN = ["kg", "karung", "ikat", "ton", "buah"];
+
+const KAT_PENGELUARAN = [
+  { key: "pupuk", label: "Pupuk" },
+  { key: "upah", label: "Upah Pekerja" },
+  { key: "bibit", label: "Bibit/Benih" },
+  { key: "obat", label: "Obat & Pestisida" },
+  { key: "sewa_alat", label: "Sewa Alat/Lahan" },
+  { key: "transport", label: "Transport" },
+  { key: "lainnya", label: "Lainnya" },
+];
+const KAT_MAP = Object.fromEntries(KAT_PENGELUARAN.map((k) => [k.key, k.label]));
+
+/* ===================== STATE ===================== */
+
+let currentTab = "panen";
+let filterTanggal = todayStr();
+let lihatSemua = false;
+let filterKomoditas = "semua";
+let filterKasbon = "belum";
+let formMode = "panen";
+
+/* ===================== PARSER SUARA ===================== */
+
+const ANGKA_KATA = { nol:0,satu:1,se:1,dua:2,tiga:3,empat:4,lima:5,enam:6,tujuh:7,delapan:8,sembilan:9 };
+const KELIPATAN = { puluh:10,ratus:100,ribu:1000,juta:1000000 };
+
+function kataKeAngka(tokens) {
+  let total = 0, cur = 0, i = 0;
+  while (i < tokens.length) {
+    const t = tokens[i];
+    if (t === "belas") { if (!cur) cur = 1; cur += 10; i++; continue; }
+    if (t in ANGKA_KATA) { cur += ANGKA_KATA[t]; i++; continue; }
+    if (t in KELIPATAN) {
+      const k = KELIPATAN[t];
+      if (!cur) cur = 1;
+      if (k >= 1000) { total += cur * k; cur = 0; } else cur *= k;
+      i++; continue;
+    }
+    i++;
+  }
+  return total + cur;
+}
+
+function ekstrakAngka(teks) {
+  const hasil = [];
+  let m;
+  const reDigit = /\d[\d.,]*/g;
+  while ((m = reDigit.exec(teks))) hasil.push({ val: Number(m[0].replace(/[.,]/g,"")), s: m.index, e: m.index + m[0].length });
+  const kSet = new Set([...Object.keys(ANGKA_KATA), ...Object.keys(KELIPATAN), "belas"]);
+  const reW = /[a-z]+/g; const words = [];
+  while ((m = reW.exec(teks))) words.push({ w: m[0], s: m.index, e: m.index + m[0].length });
+  let i = 0;
+  while (i < words.length) {
+    if (kSet.has(words[i].w)) {
+      let j = i;
+      while (j < words.length && kSet.has(words[j].w)) j++;
+      const sl = words.slice(i, j);
+      const val = kataKeAngka(sl.map(x => x.w));
+      if (val > 0) hasil.push({ val, s: sl[0].s, e: sl[sl.length-1].e });
+      i = j;
+    } else i++;
+  }
+  hasil.sort((a,b) => a.s - b.s);
+  const final = [];
+  for (const h of hasil) { if (!final.some(f => h.s < f.e && h.e > f.s)) final.push(h); }
+  return final.sort((a,b) => a.s - b.s);
+}
+
+function parseUcapanPanen(raw) {
+  let teks = raw.toLowerCase().replace(/\b(panen|catat|hasil)\b/g, " ").trim();
+  const komoditasKey = KOMODITAS.find(k => k.key !== "lainnya" && teks.includes(k.label.toLowerCase()))?.key || null;
+  let satuan = "kg";
+  if (/\bkarung\b/.test(teks)) satuan = "karung";
+  else if (/\bikat\b/.test(teks)) satuan = "ikat";
+  else if (/\bton\b/.test(teks)) satuan = "ton";
+  else if (/\b(buah|biji)\b/.test(teks)) satuan = "buah";
+  const angkas = ekstrakAngka(teks);
+  const enriched = angkas.map(a => {
+    const ekor = teks.slice(a.e, a.e + 14);
+    return { ...a, adaSatuan: /\b(kg|kilo|karung|ikat|ton|buah|biji)\b/.test(ekor), adaHarga: /\b(ribu|rb|rp|rupiah|perak)\b/.test(ekor + teks.slice(Math.max(0,a.s-10), a.s)) };
+  });
+  let jumlahItem = enriched.find(a => a.adaSatuan);
+  let hargaItem = enriched.find(a => a.adaHarga);
+  const sisa = enriched.filter(a => a !== jumlahItem && a !== hargaItem);
+  if (!jumlahItem && sisa.length) jumlahItem = sisa[0];
+  if (!hargaItem) { const s2 = enriched.filter(a => a !== jumlahItem); if (s2.length) hargaItem = s2.reduce((max,a) => a.val > max.val ? a : max, s2[0]); }
+  let nama = komoditasKey ? komInfo(komoditasKey).label : "";
+  if (!nama) {
+    let tmp = teks;
+    [jumlahItem, hargaItem].filter(Boolean).sort((a,b) => b.s-a.s).forEach(a => { tmp = tmp.slice(0,a.s)+" "+tmp.slice(a.e); });
+    nama = titleCase(tmp.replace(/\b(kg|kilo|karung|ikat|ton|buah|biji|ribu|rb|rp|dijual|per|hari ini)\b/g," ").replace(/\s+/g," ").trim()) || "Komoditas";
+  }
+  return { komoditasKey: komoditasKey || "lainnya", nama, jumlah: jumlahItem?.val || 0, satuan, harga: hargaItem?.val || 0 };
+}
+
+function parseUcapanKasbon(raw) {
+  let teks = raw.toLowerCase().replace(/\b(kasbon|utang|hutang|catat)\b/g," ").trim();
+  const angkas = ekstrakAngka(teks);
+  const jumlah = angkas.length ? angkas.reduce((max,a) => a.val > max.val ? a : max, angkas[0]) : null;
+  let nama = teks, ket = "";
+  if (jumlah) { nama = teks.slice(0, jumlah.s).trim(); ket = teks.slice(jumlah.e).replace(/^(buat|untuk|beli)\s+/,"").trim(); }
+  return { nama: titleCase(nama||"Tanpa nama"), jumlah: jumlah?.val || 0, ket: titleCase(ket) };
+}
+
+function parseUcapanPengeluaran(raw) {
+  let teks = raw.toLowerCase().replace(/\b(bayar|beli|catat|pengeluaran|keluar)\b/g," ").trim();
+  const angkas = ekstrakAngka(teks);
+  const jumlah = angkas.length ? angkas.reduce((max,a) => a.val > max.val ? a : max, angkas[0]) : null;
+  let ket = teks;
+  if (jumlah) ket = (teks.slice(0,jumlah.s)+" "+teks.slice(jumlah.e)).trim();
+  return { ket: titleCase(ket.replace(/\b(ribu|rb|rp|rupiah)\b/g," ").replace(/\s+/g," ").trim()) || "Pengeluaran", jumlah: jumlah?.val || 0 };
+}
+
+function titleCase(s) {
+  return s.split(" ").filter(Boolean).map(w => w[0].toUpperCase()+w.slice(1)).join(" ");
+}
+
+/* ===================== SPEECH ===================== */
+
+let recognition = null;
+let isListening = false;
+
+function initSpeech(onResult) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return null;
+  const r = new SR();
+  r.lang = "id-ID";
+  r.continuous = false;
+  r.interimResults = true;
+  r.onresult = (e) => {
+    let final = "", interim = "";
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) final += t; else interim += t;
+    }
+    if (interim) document.getElementById("interim-text").textContent = `"${interim}"`;
+    if (final) {
+      document.getElementById("interim-text").textContent = "";
+      onResult(final);
+    }
+  };
+  r.onerror = () => stopListening();
+  r.onend = () => stopListening();
+  return r;
+}
+
+function toggleListening() {
+  if (isListening) stopListening();
+  else startListening();
+}
+
+function startListening() {
+  if (recognition) { try { recognition.start(); isListening = true; updateMicBtn(); } catch {} }
+}
+function stopListening() {
+  if (recognition) { try { recognition.stop(); } catch {} }
+  isListening = false;
+  updateMicBtn();
+}
+function updateMicBtn() {
+  const btn = document.getElementById("mic-btn");
+  if (!btn) return;
+  btn.className = "mic-btn" + (isListening ? " aktif" : "");
+  btn.innerHTML = (isListening ? "🔴 Mendengarkan… ketuk untuk berhenti" : "🎙 Ucapkan catatan");
+}
+
+/* ===================== GRAFIK ===================== */
+
+function render7HariGrafik() {
+  const hari = [];
+  const today = todayStr();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate()-i);
+    hari.push(d.toISOString().slice(0,10));
+  }
+  const data = hari.map(tgl => ({
+    tgl,
+    total: panen.filter(p => p.tanggal === tgl).reduce((s,p) => s + p.jumlah * p.harga, 0),
+  }));
+  const maxVal = Math.max(1, ...data.map(d => d.total));
+  return `
+    <div class="grafik-card">
+      <div class="grafik-header">📊 Penghasilan 7 hari terakhir</div>
+      <div class="grafik-bars">
+        ${data.map(d => {
+          const tinggi = Math.max(4, (d.total/maxVal)*80);
+          const isToday = d.tgl === today;
+          return `<div class="grafik-bar-wrap">
+            <div class="grafik-bar-track">
+              <div class="grafik-bar ${isToday?"today":""}" style="height:${tinggi}px" title="${rupiah(d.total)}"></div>
+            </div>
+            <div class="grafik-label ${isToday?"today":""}">${fmtTglPendek(d.tgl)}</div>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+}
+
+/* ===================== RENDER TABS ===================== */
+
+function renderPanenTab() {
+  const itemsTgl = lihatSemua ? panen : panen.filter(p => p.tanggal === filterTanggal);
+  const items = filterKomoditas === "semua" ? itemsTgl : itemsTgl.filter(p => p.komoditasKey === filterKomoditas);
+  const pengeluaranTgl = lihatSemua ? pengeluaran : pengeluaran.filter(p => p.tanggal === filterTanggal);
+  const penghasilan = items.reduce((s,p) => s + p.jumlah*p.harga, 0);
+  const totalPengeluaran = pengeluaranTgl.reduce((s,p) => s + p.jumlah, 0);
+  const labaBersih = penghasilan - totalPengeluaran;
+
+  // ringkasan per komoditas
+  const komMap = new Map();
+  for (const it of itemsTgl) {
+    const ex = komMap.get(it.komoditasKey) || { nama: it.nama, jumlah: 0, satuan: it.satuan, rp: 0 };
+    ex.jumlah += it.jumlah; ex.rp += it.jumlah * it.harga;
+    komMap.set(it.komoditasKey, ex);
+  }
+  const komList = Array.from(komMap.entries()).sort((a,b) => b[1].rp - a[1].rp);
+
+  // komoditas tersedia di data
+  const komAda = KOMODITAS.filter(k => panen.some(p => p.komoditasKey === k.key));
+
+  const tanggalList = [...new Set([...panen.map(p=>p.tanggal), ...pengeluaran.map(p=>p.tanggal)])].sort((a,b)=>b.localeCompare(a));
+
+  let html = `
+    <div class="summary-card">
+      <div class="summary-row">
+        <div>
+          <div class="summary-label">Penghasilan ${lihatSemua?"(semua)":fmtTgl(filterTanggal)}</div>
+          <div class="summary-main">${rupiah(penghasilan)}</div>
+        </div>
+        <div style="font-size:28px">📈</div>
+      </div>
+      <div class="divider"></div>
+      <div class="summary-grid">
+        <div><div class="mini-label">Laba bersih</div><div class="mini-value ${labaBersih>=0?"hijau":"merah"}">${rupiah(labaBersih)}</div></div>
+        <div><div class="mini-label">Pengeluaran</div><div class="mini-value merah">${rupiah(totalPengeluaran)}</div></div>
+      </div>
+      ${komList.length ? `<div class="divider"></div><div class="chips-wrap">
+        ${komList.map(([key,v]) => `<div class="komoditas-chip" style="border-left-color:${komInfo(key).color}">
+          <span class="chip-nama">${v.nama}</span>
+          <span class="chip-berat">${v.jumlah} ${v.satuan}</span>
+          <span class="chip-rp">${rupiah(v.rp)}</span>
+        </div>`).join("")}
+      </div>` : ""}
+    </div>
+
+    ${render7HariGrafik()}
+
+    ${komAda.length > 1 ? `<div class="filter-row"><div class="segment-wrap">
+      <button class="segment-btn ${filterKomoditas==="semua"?"active":""}" onclick="setFilterKomoditas('semua')">Semua</button>
+      ${komAda.map(k=>`<button class="segment-btn ${filterKomoditas===k.key?"active":""}" onclick="setFilterKomoditas('${k.key}')">${k.label}</button>`).join("")}
+    </div></div>` : ""}
+
+    <div class="filter-row">
+      <select onchange="setFilterTanggal(this.value)">
+        <option value="${todayStr()}" ${!lihatSemua&&filterTanggal===todayStr()?"selected":""}>Hari ini · ${fmtTgl(todayStr())}</option>
+        ${tanggalList.filter(t=>t!==todayStr()).map(t=>`<option value="${t}" ${!lihatSemua&&filterTanggal===t?"selected":""}>${fmtTgl(t)}</option>`).join("")}
+        <option value="semua" ${lihatSemua?"selected":""}>Semua tanggal</option>
+      </select>
+    </div>
+
+    <div class="list-section">
+      <div class="list-header">🌾 Daftar panen</div>
+      ${items.length === 0 ? `<div class="empty-box"><p class="empty-title">Belum ada catatan panen.</p><p class="empty-sub">Ketuk + untuk mencatat, atau gunakan mikrofon.</p></div>` :
+      `<ul class="item-list">${items.map(it => {
+        const sub = it.jumlah * it.harga;
+        const k = komInfo(it.komoditasKey);
+        return `<li class="item">
+          <div class="kat-dot" style="background:${k.color}"></div>
+          <div class="item-main">
+            <div class="item-nama">${it.nama}</div>
+            <div class="item-detail">${it.jumlah} ${it.satuan} × ${rupiah(it.harga)}${lihatSemua?" · "+fmtTgl(it.tanggal):" · "+(it.waktu?fmtJam(it.waktu):"")}</div>
+          </div>
+          <div class="item-right"><div class="item-subtotal">${rupiah(sub)}</div></div>
+          <button class="btn-icon" onclick="hapusPanen('${it.id}')">🗑</button>
+        </li>`;
+      }).join("")}</ul>`}
+    </div>`;
+
+  document.getElementById("tab-panen").innerHTML = html;
+}
+
+function renderKasbonTab() {
+  const belumLunas = kasbon.filter(k=>!k.lunas);
+  const totalBelum = belumLunas.reduce((s,k)=>s+k.jumlah,0);
+  const perOrang = new Map();
+  for (const k of belumLunas) perOrang.set(k.nama, (perOrang.get(k.nama)||0)+k.jumlah);
+  const perOrangArr = Array.from(perOrang.entries()).sort((a,b)=>b[1]-a[1]);
+
+  const tampil = filterKasbon==="semua" ? kasbon : filterKasbon==="lunas" ? kasbon.filter(k=>k.lunas) : belumLunas;
+
+  let html = `
+    <div class="summary-card">
+      <div class="summary-row">
+        <div>
+          <div class="summary-label">Total kasbon belum lunas</div>
+          <div class="summary-main merah">${rupiah(totalBelum)}</div>
+        </div>
+        <div style="font-size:28px">👥</div>
+      </div>
+      ${perOrangArr.length ? `<div class="divider"></div><div class="chips-wrap">
+        ${perOrangArr.map(([nama,jml])=>`<div class="kasbon-chip"><span class="kasbon-chip-nama">${nama}</span><span class="kasbon-chip-rp">${rupiah(jml)}</span></div>`).join("")}
+      </div>` : ""}
+    </div>
+
+    <div class="filter-row"><div class="segment-wrap">
+      <button class="segment-btn ${filterKasbon==="belum"?"active":""}" onclick="setFilterKasbon('belum')">Belum lunas</button>
+      <button class="segment-btn ${filterKasbon==="lunas"?"active":""}" onclick="setFilterKasbon('lunas')">Lunas</button>
+      <button class="segment-btn ${filterKasbon==="semua"?"active":""}" onclick="setFilterKasbon('semua')">Semua</button>
+    </div></div>
+
+    <div class="list-section">
+      <div class="list-header">📒 Daftar kasbon</div>
+      ${tampil.length===0 ? `<div class="empty-box"><p class="empty-title">Tidak ada catatan kasbon.</p><p class="empty-sub">Ketuk + untuk mencatat kasbon baru.</p></div>` :
+      `<ul class="item-list">${tampil.map(k=>`<li class="item ${k.lunas?"lunas":""}">
+        <button class="btn-lunas" onclick="toggleLunas('${k.id}')">${k.lunas?"✅":"⚠️"}</button>
+        <div class="item-main">
+          <div class="item-nama">${k.nama}${k.lunas?'<span class="lunas-tag"> · Lunas</span>':""}</div>
+          <div class="item-detail">${k.ket?k.ket+" · ":""}${fmtTgl(k.tanggal)}</div>
+        </div>
+        <div class="item-right"><div class="item-subtotal ${k.lunas?"":"merah"}">${rupiah(k.jumlah)}</div></div>
+        <button class="btn-icon" onclick="hapusKasbon('${k.id}')">🗑</button>
+      </li>`).join("")}</ul>`}
+    </div>`;
+
+  document.getElementById("tab-kasbon").innerHTML = html;
+}
+
+function renderLainnyaTab() {
+  const pengeluaranTgl = lihatSemua ? pengeluaran : pengeluaran.filter(p=>p.tanggal===filterTanggal);
+  const itemsTgl = lihatSemua ? panen : panen.filter(p=>p.tanggal===filterTanggal);
+  const penghasilan = itemsTgl.reduce((s,p)=>s+p.jumlah*p.harga,0);
+  const totalPengeluaran = pengeluaranTgl.reduce((s,p)=>s+p.jumlah,0);
+  const labaBersih = penghasilan - totalPengeluaran;
+
+  let html = `
+    <div class="summary-card">
+      <div class="summary-row">
+        <div>
+          <div class="summary-label">Pengeluaran ${lihatSemua?"(semua)":fmtTgl(filterTanggal)}</div>
+          <div class="summary-main merah">${rupiah(totalPengeluaran)}</div>
+        </div>
+        <div style="font-size:28px">📉</div>
+      </div>
+      <div class="divider"></div>
+      <div class="summary-grid">
+        <div><div class="mini-label">Penghasilan</div><div class="mini-value">${rupiah(penghasilan)}</div></div>
+        <div><div class="mini-label">Laba bersih</div><div class="mini-value ${labaBersih>=0?"hijau":"merah"}">${rupiah(labaBersih)}</div></div>
+      </div>
+    </div>
+
+    <div style="padding:16px 16px 0">
+      <button class="export-btn" onclick="exportExcel()">⬇ Export laporan ke Excel <span style="margin-left:auto">›</span></button>
+      <p class="export-hint">Berisi sheet Panen, Pengeluaran, Kasbon, dan Ringkasan — seluruh riwayat.</p>
+    </div>
+
+    <div class="list-section">
+      <div class="list-header">💸 Pengeluaran</div>
+      ${pengeluaranTgl.length===0 ? `<div class="empty-box"><p class="empty-title">Belum ada pengeluaran.</p><p class="empty-sub">Catat pupuk, upah pekerja, bibit, dll supaya laba bersih akurat.</p></div>` :
+      `<ul class="item-list">${pengeluaranTgl.map(p=>`<li class="item">
+        <div class="item-main">
+          <div class="item-nama">${p.ket}</div>
+          <div class="item-detail">${KAT_MAP[p.kategori]||"Lainnya"} · ${fmtTgl(p.tanggal)}</div>
+        </div>
+        <div class="item-right"><div class="item-subtotal merah">-${rupiah(p.jumlah)}</div></div>
+        <button class="btn-icon" onclick="hapusPengeluaran('${p.id}')">🗑</button>
+      </li>`).join("")}</ul>`}
+    </div>`;
+
+  document.getElementById("tab-lainnya").innerHTML = html;
+}
+
+function renderAll() {
+  const titles = { panen: "Catatan Panen", kasbon: "Catatan Kasbon", lainnya: "Pengeluaran & Laporan" };
+  document.getElementById("header-title").textContent = titles[currentTab];
+  renderPanenTab();
+  renderKasbonTab();
+  renderLainnyaTab();
+}
+
+/* ===================== ACTIONS ===================== */
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  ["panen","kasbon","lainnya"].forEach(t => {
+    document.getElementById("tab-"+t).style.display = t === tab ? "" : "none";
+  });
+  document.getElementById("header-title").textContent = { panen:"Catatan Panen", kasbon:"Catatan Kasbon", lainnya:"Pengeluaran & Laporan" }[tab];
+}
+
+function setFilterTanggal(val) {
+  if (val === "semua") { lihatSemua = true; } else { lihatSemua = false; filterTanggal = val; }
+  renderAll();
+}
+function setFilterKomoditas(val) { filterKomoditas = val; renderPanenTab(); }
+function setFilterKasbon(val) { filterKasbon = val; renderKasbonTab(); }
+
+function hapusPanen(id) { panen = panen.filter(p => p.id !== id); save(); renderPanenTab(); }
+function hapusKasbon(id) { kasbon = kasbon.filter(k => k.id !== id); save(); renderKasbonTab(); }
+function hapusPengeluaran(id) { pengeluaran = pengeluaran.filter(p => p.id !== id); save(); renderLainnyaTab(); }
+function toggleLunas(id) { kasbon = kasbon.map(k => k.id===id ? {...k, lunas: !k.lunas} : k); save(); renderKasbonTab(); }
+
+function exportExcel() {
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(panen.map(p=>({ Tanggal:p.tanggal, Komoditas:p.nama, Jumlah:p.jumlah, Satuan:p.satuan, "Harga/Satuan":p.harga, Penghasilan:p.jumlah*p.harga }))), "Panen");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pengeluaran.map(p=>({ Tanggal:p.tanggal, Keterangan:p.ket, Kategori:KAT_MAP[p.kategori]||"Lainnya", Jumlah:p.jumlah }))), "Pengeluaran");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(kasbon.map(k=>({ Nama:k.nama, Jumlah:k.jumlah, Keterangan:k.ket, Tanggal:k.tanggal, Status:k.lunas?"Lunas":"Belum lunas" }))), "Kasbon");
+  const totP = panen.reduce((s,p)=>s+p.jumlah*p.harga,0);
+  const totK = pengeluaran.reduce((s,p)=>s+p.jumlah,0);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([
+    { Keterangan:"Total Penghasilan Panen", Jumlah: totP },
+    { Keterangan:"Total Pengeluaran", Jumlah: totK },
+    { Keterangan:"Laba Bersih", Jumlah: totP-totK },
+    { Keterangan:"Kasbon Belum Lunas", Jumlah: kasbon.filter(k=>!k.lunas).reduce((s,k)=>s+k.jumlah,0) },
+  ]), "Ringkasan");
+  XLSX.writeFile(wb, `laporan-tani-${todayStr()}.xlsx`);
+}
+
+/* ===================== FORM ===================== */
+
+let tempForm = {};
+
+function bukaForm() {
+  formMode = currentTab === "kasbon" ? "kasbon" : currentTab === "lainnya" ? "pengeluaran" : "panen";
+  tempForm = formMode === "panen" ? { komoditasKey:"kopi", nama:"", jumlah:"", satuan:"kg", harga:"" }
+    : formMode === "kasbon" ? { nama:"", jumlah:"", ket:"" }
+    : { ket:"", jumlah:"", kategori:"pupuk" };
+
+  document.getElementById("sheet-title").textContent = formMode==="panen"?"Catat hasil panen":formMode==="kasbon"?"Catat kasbon":"Catat pengeluaran";
+  renderForm();
+  document.getElementById("overlay").style.display = "flex";
+  stopListening();
+
+  const onResult = formMode==="panen" ? (teks) => {
+    const h = parseUcapanPanen(teks);
+    tempForm.komoditasKey = h.komoditasKey;
+    tempForm.nama = h.nama;
+    tempForm.jumlah = String(h.jumlah||"");
+    tempForm.satuan = h.satuan;
+    tempForm.harga = String(h.harga||"");
+    document.getElementById("voice-notice").textContent = `Didengar: "${teks}" — cek & sunting di bawah.`;
+    renderFormFields();
+  } : formMode==="kasbon" ? (teks) => {
+    const h = parseUcapanKasbon(teks);
+    tempForm.nama = h.nama; tempForm.jumlah = String(h.jumlah||""); tempForm.ket = h.ket;
+    document.getElementById("voice-notice").textContent = `Didengar: "${teks}" — cek & sunting di bawah.`;
+    renderFormFields();
+  } : (teks) => {
+    const h = parseUcapanPengeluaran(teks);
+    tempForm.ket = h.ket; tempForm.jumlah = String(h.jumlah||"");
+    document.getElementById("voice-notice").textContent = `Didengar: "${teks}" — cek & sunting di bawah.`;
+    renderFormFields();
+  };
+
+  recognition = initSpeech(onResult);
+}
+
+function tutupForm() {
+  stopListening();
+  document.getElementById("overlay").style.display = "none";
+  recognition = null;
+}
+
+function renderForm() {
+  const contoh = formMode==="panen" ? 'Contoh: "panen kopi lima puluh kilo dijual tiga puluh lima ribu per kilo"'
+    : formMode==="kasbon" ? 'Contoh: "kasbon Pak Slamet lima puluh ribu upah panen"'
+    : 'Contoh: "beli pupuk seratus lima puluh ribu"';
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  document.getElementById("form-container").innerHTML = `
+    ${SR ? `<button class="mic-btn" id="mic-btn" onclick="toggleListening()">🎙 Ucapkan catatan</button>` : `<p class="helper-text">Mikrofon tidak didukung di peramban ini — isi manual di bawah ya.</p>`}
+    <p class="interim-text" id="interim-text"></p>
+    <p class="voice-notice" id="voice-notice"></p>
+    <p class="contoh-text">${contoh}</p>
+    <div id="form-fields"></div>
+  `;
+  renderFormFields();
+}
+
+function renderFormFields() {
+  let html = "";
+  if (formMode === "panen") {
+    html = `
+      <label class="form-label">Komoditas</label>
+      <div class="kat-picker">
+        ${KOMODITAS.map(k=>`<button class="kat-chip ${tempForm.komoditasKey===k.key?"active":""}" style="${tempForm.komoditasKey===k.key?"background:"+k.color+";border-color:"+k.color:"background:#FFFDF8;border-color:#DCD3BD"}" onclick="setKomoditas('${k.key}')">${k.label}</button>`).join("")}
+      </div>
+      ${tempForm.komoditasKey==="lainnya"?`<label class="form-label">Nama komoditas</label><input class="form-input" placeholder="cth. Jagung" value="${tempForm.nama}" oninput="tempForm.nama=this.value" />`:""}
+      <div class="row-two">
+        <div>
+          <label class="form-label">Jumlah hasil</label>
+          <input class="form-input" type="number" inputmode="numeric" placeholder="0" value="${tempForm.jumlah}" oninput="tempForm.jumlah=this.value" />
+        </div>
+        <div>
+          <label class="form-label">Satuan</label>
+          <select class="form-input" onchange="tempForm.satuan=this.value">
+            ${SATUAN.map(s=>`<option value="${s}" ${tempForm.satuan===s?"selected":""}>${s}</option>`).join("")}
+          </select>
+        </div>
+      </div>
+      <label class="form-label">Harga jual / satuan</label>
+      <input class="form-input" type="number" inputmode="numeric" placeholder="0" value="${tempForm.harga}" oninput="tempForm.harga=this.value" />
+      <p class="helper-text">Kosongkan kalau belum dijual — bisa diisi nanti.</p>
+      <button class="submit-btn" ${!tempForm.jumlah?"disabled":""} onclick="simpanPanen()">Simpan catatan panen</button>
+    `;
+  } else if (formMode === "kasbon") {
+    html = `
+      <label class="form-label">Nama petani / pekerja</label>
+      <input class="form-input" placeholder="cth. Pak Slamet" value="${tempForm.nama}" oninput="tempForm.nama=this.value" />
+      <label class="form-label">Jumlah kasbon</label>
+      <input class="form-input" type="number" inputmode="numeric" placeholder="0" value="${tempForm.jumlah}" oninput="tempForm.jumlah=this.value" />
+      <label class="form-label">Keterangan (opsional)</label>
+      <input class="form-input" placeholder="cth. Upah bantu panen" value="${tempForm.ket}" oninput="tempForm.ket=this.value" />
+      <button class="submit-btn" ${(!tempForm.nama||!tempForm.jumlah)?"disabled":""} onclick="simpanKasbon()">Simpan kasbon</button>
+    `;
+  } else {
+    html = `
+      <label class="form-label">Keterangan</label>
+      <input class="form-input" placeholder="cth. Beli pupuk NPK" value="${tempForm.ket}" oninput="tempForm.ket=this.value" />
+      <label class="form-label">Kategori</label>
+      <div class="kat-picker">
+        ${KAT_PENGELUARAN.map(k=>`<button class="kat-chip ${tempForm.kategori===k.key?"active":""}" style="${tempForm.kategori===k.key?"background:#B3473B;border-color:#B3473B;color:#fff":""}" onclick="setKatPengeluaran('${k.key}')">${k.label}</button>`).join("")}
+      </div>
+      <label class="form-label">Jumlah</label>
+      <input class="form-input" type="number" inputmode="numeric" placeholder="0" value="${tempForm.jumlah}" oninput="tempForm.jumlah=this.value" />
+      <button class="submit-btn" ${(!tempForm.ket||!tempForm.jumlah)?"disabled":""} onclick="simpanPengeluaran()">Simpan pengeluaran</button>
+    `;
+  }
+  document.getElementById("form-fields").innerHTML = html;
+}
+
+function setKomoditas(key) {
+  tempForm.komoditasKey = key;
+  if (key !== "lainnya") tempForm.nama = komInfo(key).label;
+  renderFormFields();
+}
+function setKatPengeluaran(key) { tempForm.kategori = key; renderFormFields(); }
+
+function simpanPanen() {
+  if (!tempForm.jumlah) return;
+  const nama = tempForm.komoditasKey === "lainnya" ? (tempForm.nama||"Komoditas Lain") : komInfo(tempForm.komoditasKey).label;
+  panen.unshift({ id:uid(), tanggal:lihatSemua?todayStr():filterTanggal, waktu:new Date().toISOString(), komoditasKey:tempForm.komoditasKey, nama, jumlah:Number(tempForm.jumlah)||0, satuan:tempForm.satuan, harga:Number(tempForm.harga)||0 });
+  save(); tutupForm(); renderAll();
+}
+function simpanKasbon() {
+  if (!tempForm.nama||!tempForm.jumlah) return;
+  kasbon.unshift({ id:uid(), nama:tempForm.nama.trim(), jumlah:Number(tempForm.jumlah)||0, ket:tempForm.ket.trim(), tanggal:todayStr(), lunas:false });
+  save(); tutupForm(); renderAll();
+}
+function simpanPengeluaran() {
+  if (!tempForm.ket||!tempForm.jumlah) return;
+  pengeluaran.unshift({ id:uid(), ket:tempForm.ket.trim(), jumlah:Number(tempForm.jumlah)||0, kategori:tempForm.kategori, tanggal:lihatSemua?todayStr():filterTanggal });
+  save(); tutupForm(); renderAll();
+}
+
+/* ===================== PWA INSTALL ===================== */
+
+let deferredPrompt = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById("install-banner").style.display = "flex";
+});
+function installPWA() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(() => {
+    deferredPrompt = null;
+    document.getElementById("install-banner").style.display = "none";
+  });
+}
+window.addEventListener("appinstalled", () => {
+  document.getElementById("install-banner").style.display = "none";
+});
+
+/* ===================== SERVICE WORKER ===================== */
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
+}
+
+/* ===================== INIT ===================== */
+
+renderAll();
+</script>
+</body>
+</html>
